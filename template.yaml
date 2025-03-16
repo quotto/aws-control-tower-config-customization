@@ -21,7 +21,7 @@ Parameters:
 
   ConfigRecorderDefaultRecordingFrequency:
     Description: Default Frequency of recording configuration changes.
-    Default: CONTINUOUS
+    Default: DAILY
     Type: String
     AllowedValues:
       - CONTINUOUS
@@ -30,7 +30,11 @@ Parameters:
   CloudFormationVersion:
     Type: String
     Default: 1
-  
+
+  LambdaSourceBucket:
+    Type: String
+    Default: marketplace-sa-resources
+
 
 Resources:
     LambdaZipsBucket:
@@ -65,7 +69,7 @@ Resources:
         Properties:
             Code:
                 S3Bucket: !Ref LambdaZipsBucket
-                S3Key: ct-blogs-content/ct_configrecorder_override_producer.zip
+                S3Key: src/ct_configrecorder_override_producer.zip
             Handler: ct_configrecorder_override_producer.lambda_handler
             Role: !GetAtt ProducerLambdaExecutionRole.Arn
             Runtime: python3.12
@@ -80,15 +84,15 @@ Resources:
                     LOG_LEVEL: INFO
                     SQS_URL: !Ref SQSConfigRecorder
 
-    ProducerLambdaPermissions:                
+    ProducerLambdaPermissions:
       Type: AWS::Lambda::Permission
       DeletionPolicy: Retain
-      Properties: 
+      Properties:
         Action: 'lambda:InvokeFunction'
         FunctionName: !Ref ProducerLambda
         Principal: 'events.amazonaws.com'
-        SourceArn: !GetAtt ProducerEventTrigger.Arn             
-      
+        SourceArn: !GetAtt ProducerEventTrigger.Arn
+
     ConsumerLambda:
         Type: AWS::Lambda::Function
         DeletionPolicy: Retain
@@ -96,7 +100,7 @@ Resources:
         Properties:
             Code:
                 S3Bucket: !Ref LambdaZipsBucket
-                S3Key: ct-blogs-content/ct_configrecorder_override_consumer.zip
+                S3Key: src/ct_configrecorder_override_consumer.zip
             Handler: ct_configrecorder_override_consumer.lambda_handler
             Role: !GetAtt ConsumerLambdaExecutionRole.Arn
             Runtime: python3.12
@@ -119,8 +123,8 @@ Resources:
           BatchSize: 1
           Enabled: true
           EventSourceArn: !GetAtt SQSConfigRecorder.Arn
-          FunctionName: !GetAtt ConsumerLambda.Arn                
-    
+          FunctionName: !GetAtt ConsumerLambda.Arn
+
     ProducerLambdaExecutionRole:
         Type: 'AWS::IAM::Role'
         DeletionPolicy: Retain
@@ -136,7 +140,7 @@ Resources:
                     - lambda.amazonaws.com
                 Action:
                   - 'sts:AssumeRole'
-          Path: /         
+          Path: /
           Policies:
             - PolicyName: ct_cro_producer
               PolicyDocument:
@@ -152,8 +156,8 @@ Resources:
                       - sqs:ReceiveMessage
                       - sqs:SendMessage
                       - sqs:GetQueueAttributes
-                    Resource: !GetAtt SQSConfigRecorder.Arn  
-                    
+                    Resource: !GetAtt SQSConfigRecorder.Arn
+
     ConsumerLambdaExecutionRole:
         Type: 'AWS::IAM::Role'
         DeletionPolicy: Retain
@@ -169,7 +173,7 @@ Resources:
                     - lambda.amazonaws.com
                 Action:
                   - 'sts:AssumeRole'
-          Path: /         
+          Path: /
           Policies:
             - PolicyName: policy-sts-all
               PolicyDocument:
@@ -185,7 +189,7 @@ Resources:
                       - sqs:ReceiveMessage
                       - sqs:SendMessage
                       - sqs:GetQueueAttributes
-                    Resource: !GetAtt SQSConfigRecorder.Arn   
+                    Resource: !GetAtt SQSConfigRecorder.Arn
 
     SQSConfigRecorder:
         Type: AWS::SQS::Queue
@@ -197,7 +201,7 @@ Resources:
 
     ProducerEventTrigger:
         Type: AWS::Events::Rule
-        Properties: 
+        Properties:
           Description: "Rule to trigger config recorder override producer lambda"
           EventBusName: default
           EventPattern: '{
@@ -207,12 +211,12 @@ Resources:
                             "eventName": ["UpdateLandingZone", "CreateManagedAccount", "UpdateManagedAccount"]
                           }
                         }'
-          Name: !GetAtt SQSConfigRecorder.QueueName 
+          Name: !GetAtt SQSConfigRecorder.QueueName
           State: ENABLED
-          Targets: 
-            - 
-                Arn: 
-                  Fn::GetAtt: 
+          Targets:
+            -
+                Arn:
+                  Fn::GetAtt:
                     - "ProducerLambda"
                     - "Arn"
                 Id: "ProducerTarget"
@@ -228,9 +232,9 @@ Resources:
       Type: Custom::CopyZips
       Properties:
         ServiceToken: !GetAtt 'CopyZipsFunction.Arn'
-        DestBucket: !Ref 'LambdaZipsBucket'
-        SourceBucket: marketplace-sa-resources
-        Prefix: ct-blogs-content/
+        DestBucket: !Ref LambdaZipsBucket
+        SourceBucket: !Ref LambdaSourceBucket
+        Prefix: src/
         Objects:
           - 'ct_configrecorder_override_producer.zip'
           - 'ct_configrecorder_override_consumer.zip'
@@ -257,7 +261,7 @@ Resources:
                   Action:
                     - s3:GetObject
                     - s3:GetObjectTagging
-                  Resource: !Sub 'arn:${AWS::Partition}:s3:::marketplace-sa-resources/ct-blogs-content/*'                    
+                  Resource: !Sub 'arn:${AWS::Partition}:s3:::marketplace-sa-resources/ct-blogs-content/*'
                 - Effect: Allow
                   Action:
                     - s3:PutObject

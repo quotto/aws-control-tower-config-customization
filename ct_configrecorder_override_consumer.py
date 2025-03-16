@@ -106,7 +106,7 @@ def lambda_handler(event, context):
                         'roleARN': role_arn,
                         'recordingGroup': {
                             'allSupported': True,
-                            'includeGlobalResourceTypes': False
+                            'includeGlobalResourceTypes': True
                         }
                     })
                 logging.info(f'Response for put_configuration_recorder :{response} ')
@@ -116,22 +116,22 @@ def lambda_handler(event, context):
                     'name': 'aws-controltower-BaselineConfigRecorder',
                     'roleARN': role_arn,
                     'recordingGroup': {
-                        'allSupported': False,
-                        'includeGlobalResourceTypes': False,
+                        'allSupported': True,
+                        'includeGlobalResourceTypes': True,
                         'exclusionByResourceTypes': {
                             'resourceTypes': CONFIG_RECORDER_EXCLUSION_RESOURCE_LIST
                         },
                         'recordingStrategy': {
-                            'useOnly': 'EXCLUSION_BY_RESOURCE_TYPES'
+                            'useOnly': 'ALL_SUPPORTED_RESOURCE_TYPES'
                         }
                     },
                     'recordingMode': {
                         'recordingFrequency': CONFIG_RECORDER_DEFAULT_RECORDING_FREQUENCY,
                         'recordingModeOverrides': [
                             {
-                                'description': 'DAILY_OVERRIDE',
+                                'description': 'CONTINUOUS_OVERRIDE',
                                 'resourceTypes': CONFIG_RECORDER_OVERRIDE_DAILY_RESOURCE_LIST,
-                                'recordingFrequency': 'DAILY'
+                                'recordingFrequency': 'CONTINUOUS'
                             }
                         ] if CONFIG_RECORDER_OVERRIDE_DAILY_RESOURCE_LIST else []
                     }
