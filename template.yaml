@@ -261,14 +261,14 @@ Resources:
                   Action:
                     - s3:GetObject
                     - s3:GetObjectTagging
-                  Resource: !Sub 'arn:${AWS::Partition}:s3:::marketplace-sa-resources/ct-blogs-content/*'
+                  Resource: !Sub 'arn:${AWS::Partition}:s3:::${LambdaSourceBucket}/src/*'
                 - Effect: Allow
                   Action:
                     - s3:PutObject
                     - s3:DeleteObject
                     - s3:PutObjectTagging
                   Resource:
-                    - !Sub 'arn:${AWS::Partition}:s3:::${LambdaZipsBucket}/ct-blogs-content/*'
+                    - !Sub 'arn:${AWS::Partition}:s3:::${LambdaZipsBucket}/src/*'
 
     CopyZipsFunction:
       Type: AWS::Lambda::Function
